@@ -1,0 +1,124 @@
+﻿@page "/Coinmarketcap"
+@using HtmlAgilityPack
+@using System.Globalization
+@inject HttpClient client
+@using TesteNumbeo.Model
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@using TesteNumbeo.Core
+@inject IJSRuntime JS
+
+<PageTitle>Coinmarketcap</PageTitle>
+
+<Table Narrow="true" Hoverable="true" Bordered="true">
+    <TableHeader>
+        <TableRow>
+            <TableHeaderCell TextAlignment="TextAlignment.Center">
+                Name
+            </TableHeaderCell>
+            <TableHeaderCell TextAlignment="TextAlignment.Center">
+                1h
+            </TableHeaderCell>
+            <TableHeaderCell TextAlignment="TextAlignment.Center">
+                24h
+            </TableHeaderCell>
+            <TableHeaderCell TextAlignment="TextAlignment.Center">
+                Market Cap
+            </TableHeaderCell>
+            <TableHeaderCell TextAlignment="TextAlignment.Center">
+                Volume
+            </TableHeaderCell>
+            <TableHeaderCell TextAlignment="TextAlignment.Center">
+                Added
+            </TableHeaderCell>
+        </TableRow>
+    </TableHeader>
+    <TableBody>
+        @foreach (var item in News)
+        {
+            <TableRow>
+                <TableRowCell>@item.Name</TableRowCell>
+                <TableRowCell>@item._1h</TableRowCell>
+                <TableRowCell>@item._24h</TableRowCell>
+                <TableRowCell>@item.MarketCap.ToString("c")</TableRowCell>
+                <TableRowCell>@item.Volume.ToString("c")</TableRowCell>
+                <TableRowCell>@item.Added</TableRowCell>
+            </TableRow>
+        }
+    </TableBody>
+</Table>
+
+@code {
+    public List<New> News { get; set; } = new();
+
+    public string url { get; set; } = "https://coinmarketcap.com/new";
+
+    //public static EventCallback<string> SyncAllorigins;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //SyncAllorigins = EventCallback.Factory.Create<string>(this, SyncPage);
+
+        //await JS.InvokeAsync<object>("SyncAllorigins", url);
+
+        await SyncPage(await GetHtml2(url));
+    }
+
+    //[JSInvokable]
+    //public static async Task GetHtml(string html)
+    //{
+    //    await SyncAllorigins.InvokeAsync(html);
+    //}
+
+    public class allorigins
+    {
+        public string contents { get; set; }
+    }
+
+    public async Task<string> GetHtml2(string url)
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            var obj = await client.GetFromJsonAsync<allorigins>("https://api.allorigins.win/get?url=" + url + "?a=" + Guid.NewGuid());
+
+            return obj?.contents ?? "";
+        }
+    }
+
+    public async Task SyncPage(string html)
+    {
+        var doc = new HtmlDocument();
+
+        doc.LoadHtml(html);
+
+        var trs = doc.DocumentNode.SelectNodes("//table[contains(@class,'cmc-table')]/tbody/tr");
+
+        foreach (var tr in trs)
+        {
+            try
+            {
+                var cells = tr.SelectNodes("td");
+                var name = cells[2].SelectNodes("a/div/div/p").FirstOrDefault().InnerText;
+
+                var currValue = News.FirstOrDefault(f => f.Name == name);
+
+                currValue = new New
+                    {
+                        Name = name,
+                        _1h = double.Parse(cells[4].SelectNodes("span").FirstOrDefault().InnerText.Replace("%", "")),
+                        _24h = double.Parse(cells[5].SelectNodes("span").FirstOrDefault().InnerText.Replace("%", "")),
+                        MarketCap = decimal.Parse(cells[6].InnerText.Replace("$", "").Replace("--", "0")),
+                        Volume = decimal.Parse(cells[7].InnerText.Replace("$", "").Replace("--", "0")),
+                        Added = cells[9].InnerText
+                    };
+
+                News.Add(currValue);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        await localStorage.SetItemAsync("News", News);
+    }
+}

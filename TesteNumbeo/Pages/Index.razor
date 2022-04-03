@@ -1,0 +1,390 @@
+﻿@page "/"
+@using HtmlAgilityPack
+@using System.Globalization
+@inject HttpClient client
+@using TesteNumbeo.Model
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@using TesteNumbeo.Core
+
+<PageTitle>Index</PageTitle>
+
+<button onclick="@(()=>SyncCurrency())">Sync Currencies</button>
+<br />
+<br />
+@*<input @bind-value="@url" style="width: 650px;"></input>*@
+<button onclick="@(()=>SyncCountries())">Sync Countries</button>
+<button onclick="@(()=>SyncMinimalWages())">Sync Minimal Wages</button>
+@*<button onclick="@(()=>SyncCity())">Sync City</button>*@
+<br />
+<br />
+<Select @bind-SelectedValue="PriceType" Margin="Margin.Is2.FromBottom" Style="width: auto;">
+    @foreach (var item in EnumHelper.GetArray<PriceType>())
+    {
+        <SelectItem Value="item">@item.GetName()</SelectItem>
+    }
+</Select>
+@*<Select TValue="CurrencyValue" @bind-SelectedValue="CurrencyValue" Margin="Margin.Is2.FromBottom" Style="width: auto;">
+    @foreach (var item in CurrencyModel.Currencies)
+    {
+    <SelectItem TValue="CurrencyValue" Value="@item">@item.Currency</SelectItem>
+    }
+    </Select>*@
+
+<Table Narrow="true" Hoverable="true" Bordered="true">
+    <TableHeader>
+        <TableRow>
+            <TableHeaderCell>COST OF LIVING</TableHeaderCell>
+            @foreach (var country in CountryModel.Countries.OrderBy(o => o.Total(PriceType, CurrencyModel.Currencies)))
+            {
+                //(@CountryModel.Countries.First(f=>f.Cities.Contains(city)).Name)
+                <TableHeaderCell TextAlignment="TextAlignment.Center">
+                    @country.Name.Replace("+"," ")
+                </TableHeaderCell>
+            }
+        </TableRow>
+    </TableHeader>
+    <TableBody>
+        @foreach (var type in EnumHelper.GetArray<ExpenseType>())
+        {
+            <TableRow>
+                <TableRowHeader>
+                    <Span title="@type.GetDescription()">@type.GetName()</Span>
+                </TableRowHeader>
+                @foreach (var country in CountryModel.Countries.OrderBy(o => o.Total(PriceType, CurrencyModel.Currencies)))
+                {
+                    if (type == ExpenseType.Meal || type == ExpenseType.Market)
+                    {
+                        <TableRowCell TextAlignment="TextAlignment.End">
+                            @country.Expenses.FirstOrDefault(s=>s.Type==type)?.GetDolar(PriceType, CurrencyModel.Currencies, country.Currency, 31).ToString("C")
+                        </TableRowCell>
+                    }
+                    else
+                    {
+                        <TableRowCell TextAlignment="TextAlignment.End">
+                            @country.Expenses.FirstOrDefault(s=>s.Type==type)?.GetDolar(PriceType, CurrencyModel.Currencies, country.Currency).ToString("C")
+                        </TableRowCell>
+                    }
+                }
+            </TableRow>
+        }
+    </TableBody>
+    <TableFooter>
+        <TableRow>
+            <TableHeaderCell>Total</TableHeaderCell>
+            @foreach (var country in CountryModel.Countries.OrderBy(o => o.Total(PriceType, CurrencyModel.Currencies)))
+            {
+                <TableHeaderCell TextAlignment="TextAlignment.End">
+                    @country.Total(PriceType, CurrencyModel.Currencies).ToString("C")
+                </TableHeaderCell>
+            }
+        </TableRow>
+    </TableFooter>
+</Table>
+
+<Table Narrow="true" Hoverable="true" Bordered="true">
+    <TableHeader>
+        <TableRow>
+            <TableHeaderCell>ENGLISH EXCHANGE</TableHeaderCell>
+            @foreach (var country in CountryModel.Countries.OrderBy(o => o.Total(PriceType, CurrencyModel.Currencies)))
+            {
+                //(@CountryModel.Countries.First(f=>f.Cities.Contains(city)).Name)
+                <TableHeaderCell TextAlignment="TextAlignment.Center">
+                    @country.Name.Replace("+"," ")
+                </TableHeaderCell>
+            }
+        </TableRow>
+    </TableHeader>
+    <TableBody>
+        <TableRow>
+            <TableRowHeader>
+                Can Work
+            </TableRowHeader>
+            @foreach (var country in CountryModel.Countries.OrderBy(o => o.Total(PriceType, CurrencyModel.Currencies)))
+            {
+                <TableRowCell TextAlignment="TextAlignment.End">
+                    @country.CanWork
+                </TableRowCell>
+            }
+        </TableRow>
+        <TableRow>
+            <TableRowHeader>
+                Minimal Wage
+            </TableRowHeader>
+            @foreach (var country in CountryModel.Countries.OrderBy(o => o.Total(PriceType, CurrencyModel.Currencies)))
+            {
+                <TableRowCell TextAlignment="TextAlignment.End">
+                    @country.MinimalWage.ToString("C")
+                </TableRowCell>
+            }
+        </TableRow>
+    </TableBody>
+</Table>
+
+@code {
+    public CurrencyModel CurrencyModel { get; set; } = new();
+    public CountryModel CountryModel { get; set; } = new();
+
+    public PriceType PriceType { get; set; } = PriceType.Average;
+
+    //public string url { get; set; } = "https://www.numbeo.com/cost-of-living/in/Sao-Paulo";
+    public string url { get; set; } = "https://www.numbeo.com/cost-of-living/country_result.jsp?country={0}";
+
+    //pegar cotação mais precisa. é necessário
+    //https://free.currconv.com/api/v7/convert?q=USD_GBP&compact=ultra&apiKey=15d0d0451fbb700cde0a
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await localStorage.ContainKeyAsync("CurrencyModel"))
+        {
+            CurrencyModel = await localStorage.GetItemAsync<CurrencyModel>("CurrencyModel");
+        }
+
+        if (await localStorage.ContainKeyAsync("CountryModel"))
+        {
+            CountryModel = await localStorage.GetItemAsync<CountryModel>("CountryModel");
+        }
+    }
+
+    public class allorigins
+    {
+        public string contents { get; set; }
+    }
+
+    public async Task<string> GetHtml(string url)
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            client.DefaultRequestHeaders.Add("User-Agent", "C# console program");
+
+            var obj = await client.GetFromJsonAsync<allorigins>("https://api.allorigins.win/get?url=" + url);
+
+            return obj?.contents ?? "";
+        }
+    }
+
+    public async Task SyncCurrency()
+    {
+        var doc = new HtmlDocument();
+        var html = await GetHtml("https://www.numbeo.com/common/currency_settings.jsp");
+
+        doc.LoadHtml(html);
+
+        var table = doc.DocumentNode.SelectNodes("//table[@id='t2']").Single();
+        var trs = table.SelectNodes("//tbody/tr");
+
+        CurrencyModel.UpdatedDate = DateTimeOffset.UtcNow;
+
+        foreach (var tr in trs)
+        {
+            var currency = tr.Elements("td").First().InnerText;
+            var value = tr.Elements("td").Last().InnerText;
+
+            var currValue = CurrencyModel.Currencies.FirstOrDefault(f => f.Currency == currency);
+
+            currValue = new CurrencyValue(currency, decimal.Parse(value));
+
+            CurrencyModel.Currencies.Add(currValue);
+        }
+
+        await localStorage.SetItemAsync("CurrencyModel", CurrencyModel);
+    }
+
+    public async Task SyncCountries()
+    {
+        foreach (var item in CountryModel.Countries.ToList())
+        {
+            await SyncCountry(item.Name);
+        }
+    }
+
+    public async Task SyncCountry(string parCountryName)
+    {
+        //https://www.w3.org/TR/2017/REC-xpath-31-20170321/
+
+        var doc = new HtmlDocument();
+        var html = await GetHtml(string.Format(url, parCountryName));
+
+        doc.LoadHtml(html);
+
+        //var countryName = doc.DocumentNode.SelectNodes("//nav[@class='breadcrumb']//span[position()=3]/a/span").Single().InnerText;
+        var currency = doc.DocumentNode.SelectNodes("//select[starts-with(@id,'displayCurrency')]/option[@selected='selected']").Single().InnerText;
+
+        CountryModel.Countries.Add(new Country { Name = parCountryName, Currency = currency });
+
+        var table = doc.DocumentNode.SelectNodes("//table[starts-with(@class,'data_wide_table')]").Single();
+
+        var country = CountryModel.Countries.First(f => f.Name == parCountryName);
+
+        var expenses = new HashSet<Expense>();
+
+        foreach (var item in EnumHelper.GetArray<ExpenseType>())
+        {
+            if (item == ExpenseType.Market)
+            {
+                decimal Price = 0;
+                decimal MinPrice = 0;
+                decimal MaxPrice = 0;
+
+                foreach (var market in EnumHelper.GetArray<MarketExpenseType>())
+                {
+                    var att = market.GetMarketCustomAttribute();
+
+                    var regular = GetRegularValue(table, market.GetDescription()) / (decimal)att.Convert;
+                    var proporcional = (decimal)att.Proporcion;
+                    Price += regular * proporcional;
+                    MinPrice += GetMinValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
+                    MaxPrice += GetMaxValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
+                }
+
+                expenses.Add(new Expense() { Type = item, Price = Price, MinPrice = MinPrice, MaxPrice = MaxPrice });
+            }
+            else
+            {
+                expenses.Add(new Expense() { Type = item, Price = GetRegularValue(table, item.GetDescription()), MinPrice = GetMinValue(table, item.GetDescription()), MaxPrice = GetMaxValue(table, item.GetDescription()) });
+            }
+        }
+
+        //expenses.Add(new Expense() { Type = ExpenseType.RentCentre, Price = GetRegularValue(table, ExpenseType.RentCentre), MinPrice = GetMinValue(table, ExpenseType.RentCentre), MaxPrice = GetMaxValue(table, ExpenseType.RentCentre) });
+        //expenses.Add(new Expense() { Type = ExpenseType.Meal, Price = GetRegularValue(table, ExpenseType.Meal), MinPrice = GetMinValue(table, ExpenseType.Meal), MaxPrice = GetMaxValue(table, ExpenseType.Meal) });
+        //expenses.Add(new Expense() { Type = ExpenseType.Basic, Price = GetRegularValue(table, ExpenseType.Basic), MinPrice = GetMinValue(table, ExpenseType.Basic), MaxPrice = GetMaxValue(table, ExpenseType.Basic) });
+        //expenses.Add(new Expense() { Type = ExpenseType.Internet, Price = GetRegularValue(table, ExpenseType.Internet), MinPrice = GetMinValue(table, ExpenseType.Internet), MaxPrice = GetMaxValue(table, ExpenseType.Internet) });
+
+        country.Link = new Uri(url);
+        country.Expenses = expenses;
+        country.UpdatedDate = DateTimeOffset.UtcNow;
+
+        await localStorage.SetItemAsync("CountryModel", CountryModel);
+    }
+
+    public async Task SyncCity()
+    {
+        //https://www.w3.org/TR/2017/REC-xpath-31-20170321/
+
+        var doc = new HtmlDocument();
+        var html = await GetHtml(url);
+
+        doc.LoadHtml(html);
+
+        var countryName = doc.DocumentNode.SelectNodes("//nav[@class='breadcrumb']//span[position()=3]/a/span").Single().InnerText;
+        var cityName = doc.DocumentNode.SelectNodes("//nav[@class='breadcrumb']//span[position()=5]/a/span").Single().InnerText;
+        //var currency = doc.DocumentNode.SelectNodes("//select[starts-with(@id,'displayCurrency')]/option[@selected='selected']").Single().InnerText;
+
+        CountryModel.Countries.Add(new Country { Name = countryName });
+
+        var table = doc.DocumentNode.SelectNodes("//table[starts-with(@class,'data_wide_table')]").Single();
+
+        var country = CountryModel.Countries.First(f => f.Name == countryName);
+
+        var city = country.Cities.FirstOrDefault(f => f.Name == cityName);
+
+        var expenses = new HashSet<Expense>();
+
+        foreach (var item in EnumHelper.GetArray<ExpenseType>())
+        {
+            if (item == ExpenseType.Market)
+            {
+                decimal Price = 0;
+                decimal MinPrice = 0;
+                decimal MaxPrice = 0;
+
+                foreach (var market in EnumHelper.GetArray<MarketExpenseType>())
+                {
+                    Price += GetRegularValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
+                    MinPrice += GetMinValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
+                    MaxPrice += GetMaxValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
+                }
+
+                expenses.Add(new Expense() { Type = item, Price = Price, MinPrice = MinPrice, MaxPrice = MaxPrice });
+            }
+            else
+            {
+                expenses.Add(new Expense() { Type = item, Price = GetRegularValue(table, item.GetDescription()), MinPrice = GetMinValue(table, item.GetDescription()), MaxPrice = GetMaxValue(table, item.GetDescription()) });
+            }
+        }
+
+        //expenses.Add(new Expense() { Type = ExpenseType.RentCentre, Price = GetRegularValue(table, ExpenseType.RentCentre), MinPrice = GetMinValue(table, ExpenseType.RentCentre), MaxPrice = GetMaxValue(table, ExpenseType.RentCentre) });
+        //expenses.Add(new Expense() { Type = ExpenseType.Meal, Price = GetRegularValue(table, ExpenseType.Meal), MinPrice = GetMinValue(table, ExpenseType.Meal), MaxPrice = GetMaxValue(table, ExpenseType.Meal) });
+        //expenses.Add(new Expense() { Type = ExpenseType.Basic, Price = GetRegularValue(table, ExpenseType.Basic), MinPrice = GetMinValue(table, ExpenseType.Basic), MaxPrice = GetMaxValue(table, ExpenseType.Basic) });
+        //expenses.Add(new Expense() { Type = ExpenseType.Internet, Price = GetRegularValue(table, ExpenseType.Internet), MinPrice = GetMinValue(table, ExpenseType.Internet), MaxPrice = GetMaxValue(table, ExpenseType.Internet) });
+
+        city = new City()
+            {
+                Name = cityName,
+                Link = new Uri(url),
+                Expenses = expenses,
+                UpdatedDate = DateTimeOffset.UtcNow
+            };
+
+        country.Cities.Add(city);
+
+        await localStorage.SetItemAsync("CountryModel", CountryModel);
+    }
+
+    public async Task SyncMinimalWages()
+    {
+        foreach (var item in CountryModel.Countries.ToList())
+        {
+            await SyncMinimalWage(item.Name);
+        }
+    }
+
+    public async Task SyncMinimalWage(string parCountryName)
+    {
+        var doc = new HtmlDocument();
+        var html = await GetHtml("https://countryeconomy.com/national-minimum-wage");
+
+        doc.LoadHtml(html);
+
+        var table = doc.DocumentNode.SelectNodes("//table[starts-with(@class,'tabledat')]").Single();
+
+        var country = CountryModel.Countries.First(f => f.Name == parCountryName);
+
+        var minimalWage = decimal.Parse(table.SelectNodes($"//tr/td[a//text()[contains(., '{parCountryName}')]]//td[position()=4]").Single().InnerText);
+
+        country.MinimalWage = minimalWage;
+
+        await localStorage.SetItemAsync("CountryModel", CountryModel);
+    }
+
+    private decimal GetRegularValue(HtmlNode table, string description)
+    {
+        try
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+
+            return decimal.Parse(table.SelectNodes($"//tr[td//text()[contains(., '{description}')]]//td[position()=2]/span").Single().InnerText.Split("&")[0]);
+        }
+        catch (Exception)
+        {
+            throw new Exception(description);
+        }
+    }
+
+    private decimal GetMinValue(HtmlNode table, string description)
+    {
+        try
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+
+            return decimal.Parse(table.SelectNodes($"//tr[td//text()[contains(., '{description}')]]//td[position()=3]/span[position()=1]").Single().InnerText);
+        }
+        catch (Exception)
+        {
+            throw new Exception(description);
+        }
+    }
+
+    private decimal GetMaxValue(HtmlNode table, string description)
+    {
+        try
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+
+            return decimal.Parse(table.SelectNodes($"//tr[td//text()[contains(., '{description}')]]//td[position()=3]/span[position()=5]").Single().InnerText);
+        }
+        catch (Exception)
+        {
+            throw new Exception(description);
+        }
+    }
+}
