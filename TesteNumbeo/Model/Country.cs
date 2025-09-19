@@ -19,11 +19,11 @@ namespace TesteNumbeo.Model
         [Required]
         public string Currency { get; set; }
 
-        [Required]
-        public bool CanWork { get; set; } = false;
+        //[Required]
+        //public bool CanWork { get; set; } = false;
 
-        [Required]
-        public decimal MinimalWage { get; set; } = 0;
+        //[Required]
+        //public decimal MinimalWage { get; set; } = 0;
 
         [Required]
         public DateTimeOffset UpdatedDate { get; set; } = DateTimeOffset.UtcNow;
@@ -32,7 +32,7 @@ namespace TesteNumbeo.Model
 
         public HashSet<City> Cities { get; set; } = new();
 
-        public decimal Total(PriceType type, HashSet<CurrencyValue> currencies) => Expenses.Sum(s => s.GetDolar(type, currencies, Currency, s.Type == ExpenseType.Meal ? 30 : 1));
+        public decimal Total(PriceType type, HashSet<CurrencyValue> currencies) => Expenses.Where(w => w.Type == ExpenseType.RentCentre | w.Type == ExpenseType.Meal | w.Type == ExpenseType.Market).Sum(s => s.GetDolar(type, currencies, Currency, s.Type == ExpenseType.Meal || s.Type == ExpenseType.Market ? 30 : 1));
 
         public override bool Equals(object? obj)
         {
@@ -86,9 +86,9 @@ namespace TesteNumbeo.Model
 
             return type switch
             {
-                PriceType.Minimum => MinPrice / curr.Value * plus,
-                PriceType.Average => Price / curr.Value * plus,
-                PriceType.Maximum => MaxPrice / curr.Value * plus,
+                PriceType.Minimum => (MinPrice / curr.Value) * plus,
+                PriceType.Average => (Price / curr.Value) * plus,
+                PriceType.Maximum => (MaxPrice / curr.Value) * plus,
                 _ => 0,
             };
         }
@@ -125,11 +125,11 @@ namespace TesteNumbeo.Model
         [Custom(Name = "Meal", Description = "Meal, Inexpensive Restaurant")]
         Meal = 1,
 
-        [Custom(Name = "Bills", Description = "Basic (Electricity, Heating, Cooling, Water, Garbage) for 915 sq ft Apartment")]
-        Basic = 2,
+        //[Custom(Name = "Bills", Description = "Basic (Electricity, Heating, Cooling, Water, Garbage) for 915 sq ft Apartment")]
+        //Basic = 2,
 
-        [Custom(Name = "Internet", Description = "Internet (60 Mbps or More, Unlimited Data, Cable/ADSL)")]
-        Internet = 3,
+        //[Custom(Name = "Internet", Description = "Internet (60 Mbps or More, Unlimited Data, Cable/ADSL)")]
+        //Internet = 3,
 
         [Custom(Name = "Market", Description = "Recommended Minimum Amount of Money for food (2400 calories, Western food types)")]
         Market = 4

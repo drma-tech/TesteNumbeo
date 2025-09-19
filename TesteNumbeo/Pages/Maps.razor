@@ -1,0 +1,34 @@
+﻿@page "/Maps"
+@using PSC.Extensions;
+
+<WorldMap Values="@values" TextTooltip=": {0} visitors" RegionSelect="@OnRegionSelect"
+          SelectedRegions="@SelectedRegions" SelectChanged="@SelectedChanged"
+          PinMode="PinMode.Id" Pins="@pins" EnableZoom="true" Height="600px" ShowLabel="true" ShowTooltip="true" />
+
+@code {
+    string SelectedRegions = "br";
+    List<string> Selection = new List<string>();
+    Dictionary<string, string> pins = new Dictionary<string, string>()
+    {
+        { "br", "svgIcon" }
+    };
+
+    Dictionary<string, string> values = new Dictionary<string, string>()
+        {
+            { World.UnitedKingdom.GetDescription(), "15" },
+            { World.Italy.GetDescription(), "7.5" },
+            { World.Australia.GetDescription(), "9" },
+        };
+
+    Task OnRegionSelect(ChangeData data)
+    {
+        Console.WriteLine($"Selected {data.Code} / {data.Region}");
+        return Task.CompletedTask;
+    }
+
+    Task SelectedChanged(List<string> slc)
+    {
+        Selection = slc;
+        return Task.CompletedTask;
+    }
+}

@@ -1,6 +1,6 @@
 using Blazored.LocalStorage;
 using Blazorise;
-using Blazorise.Bootstrap5;
+using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -19,11 +19,8 @@ builder.Services.AddBlazoredLocalStorage(config =>
 });
 
 builder.Services
-      .AddBlazorise(options =>
-      {
-          options.ChangeTextOnKeyPress = true;
-      })
-      .AddBootstrap5Providers()
-      .AddFontAwesomeIcons();
+    .AddBlazorise(options => options.Immediate = true)
+    .AddBootstrapProviders()
+    .AddFontAwesomeIcons();
 
 await builder.Build().RunAsync();

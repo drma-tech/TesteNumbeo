@@ -11,9 +11,10 @@
 <button onclick="@(()=>SyncCurrency())">Sync Currencies</button>
 <br />
 <br />
-@*<input @bind-value="@url" style="width: 650px;"></input>*@
+<input @bind-value="@country" style="width: 300px;"></input>
+<button onclick="@(()=>SyncCountry(country))">Add Country</button>
 <button onclick="@(()=>SyncCountries())">Sync Countries</button>
-<button onclick="@(()=>SyncMinimalWages())">Sync Minimal Wages</button>
+@* <button onclick="@(()=>SyncMinimalWages())">Sync Minimal Wages</button> *@
 @*<button onclick="@(()=>SyncCity())">Sync City</button>*@
 <br />
 <br />
@@ -37,8 +38,8 @@
             @foreach (var country in CountryModel.Countries.OrderBy(o => o.Total(PriceType, CurrencyModel.Currencies)))
             {
                 //(@CountryModel.Countries.First(f=>f.Cities.Contains(city)).Name)
-                <TableHeaderCell TextAlignment="TextAlignment.Center">
-                    @country.Name.Replace("+"," ")
+                <TableHeaderCell TextAlignment="TextAlignment.Center" @onclick="@(()=>RemoveCountry(country.Name))">
+                    @country.Name.Replace("+", " ")
                 </TableHeaderCell>
             }
         </TableRow>
@@ -55,13 +56,13 @@
                     if (type == ExpenseType.Meal || type == ExpenseType.Market)
                     {
                         <TableRowCell TextAlignment="TextAlignment.End">
-                            @country.Expenses.FirstOrDefault(s=>s.Type==type)?.GetDolar(PriceType, CurrencyModel.Currencies, country.Currency, 31).ToString("C")
+                            @country.Expenses.FirstOrDefault(s => s.Type == type)?.GetDolar(PriceType, CurrencyModel.Currencies, country.Currency, 30).ToString("C")
                         </TableRowCell>
                     }
                     else
                     {
                         <TableRowCell TextAlignment="TextAlignment.End">
-                            @country.Expenses.FirstOrDefault(s=>s.Type==type)?.GetDolar(PriceType, CurrencyModel.Currencies, country.Currency).ToString("C")
+                            @country.Expenses.FirstOrDefault(s => s.Type == type)?.GetDolar(PriceType, CurrencyModel.Currencies, country.Currency).ToString("C")
                         </TableRowCell>
                     }
                 }
@@ -81,7 +82,7 @@
     </TableFooter>
 </Table>
 
-<Table Narrow="true" Hoverable="true" Bordered="true">
+@* <Table Narrow="true" Hoverable="true" Bordered="true">
     <TableHeader>
         <TableRow>
             <TableHeaderCell>ENGLISH EXCHANGE</TableHeaderCell>
@@ -118,16 +119,17 @@
             }
         </TableRow>
     </TableBody>
-</Table>
+</Table> *@
 
 @code {
-    public CurrencyModel CurrencyModel { get; set; } = new();
-    public CountryModel CountryModel { get; set; } = new();
+    public CurrencyModel? CurrencyModel { get; set; } = new();
+    public CountryModel? CountryModel { get; set; } = new();
+    public string? country { get; set; }
 
     public PriceType PriceType { get; set; } = PriceType.Average;
 
     //public string url { get; set; } = "https://www.numbeo.com/cost-of-living/in/Sao-Paulo";
-    public string url { get; set; } = "https://www.numbeo.com/cost-of-living/country_result.jsp?country={0}";
+    public string url { get; set; } = "https://www.numbeo.com/cost-of-living/country_result.jsp?country={0}&displayCurrency=USD";
 
     //pegar cotação mais precisa. é necessário
     //https://free.currconv.com/api/v7/convert?q=USD_GBP&compact=ultra&apiKey=15d0d0451fbb700cde0a
@@ -147,18 +149,37 @@
 
     public class allorigins
     {
-        public string contents { get; set; }
+        public string? contents { get; set; }
     }
 
     public async Task<string> GetHtml(string url)
     {
-        using (HttpClient client = new HttpClient())
+        //using (HttpClient client = new HttpClient())
+        //{
+        //    client.DefaultRequestHeaders.Add("User-Agent", "C# console program");
+
+        //    var obj = await client.GetFromJsonAsync<allorigins>("https://api.allorigins.win/get?charset=ISO-8859-1&url=" + url);
+
+        //    return obj?.contents ?? "";
+        //}
+
+        using (var requestMessage = new HttpRequestMessage(HttpMethod.Get, "https://cors-anywhere.herokuapp.com/" + url))
         {
-            client.DefaultRequestHeaders.Add("User-Agent", "C# console program");
+            requestMessage.Headers.Add("origin", "x-requested-with");
 
-            var obj = await client.GetFromJsonAsync<allorigins>("https://api.allorigins.win/get?url=" + url);
+            var response = await client.SendAsync(requestMessage);
+            using HttpContent content = response.Content;
+            var sourcedata = await content.ReadAsStringAsync();
 
-            return obj?.contents ?? "";
+            if (sourcedata == "See /corsdemo for more info\n")
+            {
+                return "https://cors-anywhere.herokuapp.com/";
+            }
+
+            return sourcedata;
+
+            ////var result = GetMetaTagValue(sourcedata);
+            ////return result;
         }
     }
 
@@ -256,6 +277,13 @@
         await localStorage.SetItemAsync("CountryModel", CountryModel);
     }
 
+    private async Task RemoveCountry(string parCountryName)
+    {
+        CountryModel.Countries.RemoveWhere(f => f.Name == parCountryName);
+
+        await localStorage.SetItemAsync("CountryModel", CountryModel);
+    }
+
     public async Task SyncCity()
     {
         //https://www.w3.org/TR/2017/REC-xpath-31-20170321/
@@ -320,31 +348,42 @@
         await localStorage.SetItemAsync("CountryModel", CountryModel);
     }
 
-    public async Task SyncMinimalWages()
-    {
-        foreach (var item in CountryModel.Countries.ToList())
-        {
-            await SyncMinimalWage(item.Name);
-        }
-    }
+    // public async Task SyncMinimalWages()
+    // {
+    //     foreach (var item in CountryModel.Countries.ToList())
+    //     {
+    //         await SyncMinimalWage(item.Name);
+    //     }
+    // }
 
-    public async Task SyncMinimalWage(string parCountryName)
-    {
-        var doc = new HtmlDocument();
-        var html = await GetHtml("https://countryeconomy.com/national-minimum-wage");
+    // public async Task SyncMinimalWage(string parCountryName)
+    // {
+    //     try
+    //     {
+    //         var doc = new HtmlDocument();
+    //         var html = await GetHtml("https://countryeconomy.com/national-minimum-wage");
 
-        doc.LoadHtml(html);
+    //         doc.LoadHtml(html);
 
-        var table = doc.DocumentNode.SelectNodes("//table[starts-with(@class,'tabledat')]").Single();
+    //         var table = doc.DocumentNode.SelectNodes("//table[contains(@class,'tabledat')]").Single();
 
-        var country = CountryModel.Countries.First(f => f.Name == parCountryName);
+    //         var country = CountryModel.Countries.First(f => f.Name == parCountryName);
 
-        var minimalWage = decimal.Parse(table.SelectNodes($"//tr/td[a//text()[contains(., '{parCountryName}')]]//td[position()=4]").Single().InnerText);
+    //         var nodes1 = table.SelectNodes($"//tr/td[a//text()[contains(., '{parCountryName}')]]");
 
-        country.MinimalWage = minimalWage;
+    //         var nodes = table.SelectNodes($"//tr/td[a//text()[contains(., '{parCountryName}')]]//td[position()=4]");
 
-        await localStorage.SetItemAsync("CountryModel", CountryModel);
-    }
+    //         var minimalWage = decimal.Parse(nodes.Single().InnerText);
+
+    //         country.MinimalWage = minimalWage;
+
+    //         await localStorage.SetItemAsync("CountryModel", CountryModel);
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         throw new Exception(parCountryName);
+    //     }
+    // }
 
     private decimal GetRegularValue(HtmlNode table, string description)
     {
@@ -352,10 +391,12 @@
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
 
-            return decimal.Parse(table.SelectNodes($"//tr[td//text()[contains(., '{description}')]]//td[position()=2]/span").Single().InnerText.Split("&")[0]);
+            var value = table.SelectNodes($"//tr[td//text()[contains(., '{description}')]]//td[position()=2]/span").SingleOrDefault()?.InnerText.Split("&")[0];
+            return decimal.Parse(value ?? "0");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            return 487;
             throw new Exception(description);
         }
     }
@@ -370,6 +411,7 @@
         }
         catch (Exception)
         {
+            return 200;
             throw new Exception(description);
         }
     }
@@ -384,6 +426,7 @@
         }
         catch (Exception)
         {
+            return 800;
             throw new Exception(description);
         }
     }
