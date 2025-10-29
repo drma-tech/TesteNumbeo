@@ -8,12 +8,12 @@
 
 <PageTitle>Index</PageTitle>
 
-<button onclick="@(()=>SyncCurrency())">Sync Currencies</button>
+<button onclick="@(() => SyncCurrency())">Sync Currencies</button>
 <br />
 <br />
 <input @bind-value="@country" style="width: 300px;"></input>
-<button onclick="@(()=>SyncCountry(country))">Add Country</button>
-<button onclick="@(()=>SyncCountries())">Sync Countries</button>
+<button onclick="@(() => SyncCountry(country))">Add Country</button>
+<button onclick="@(() => SyncCountries())">Sync Countries</button>
 @* <button onclick="@(()=>SyncMinimalWages())">Sync Minimal Wages</button> *@
 @*<button onclick="@(()=>SyncCity())">Sync City</button>*@
 <br />
@@ -38,7 +38,7 @@
             @foreach (var country in CountryModel.Countries.OrderBy(o => o.Total(PriceType, CurrencyModel.Currencies)))
             {
                 //(@CountryModel.Countries.First(f=>f.Cities.Contains(city)).Name)
-                <TableHeaderCell TextAlignment="TextAlignment.Center" @onclick="@(()=>RemoveCountry(country.Name))">
+                <TableHeaderCell TextAlignment="TextAlignment.Center" @onclick="@(() => RemoveCountry(country.Name))">
                     @country.Name.Replace("+", " ")
                 </TableHeaderCell>
             }
@@ -56,7 +56,7 @@
                     if (type == ExpenseType.Meal || type == ExpenseType.Market)
                     {
                         <TableRowCell TextAlignment="TextAlignment.End">
-                            @country.Expenses.FirstOrDefault(s => s.Type == type)?.GetDolar(PriceType, CurrencyModel.Currencies, country.Currency, 30).ToString("C")
+                            @country.Expenses.FirstOrDefault(s => s.Type == type)?.GetDolar(PriceType, CurrencyModel.Currencies, country.Currency, 31).ToString("C")
                         </TableRowCell>
                     }
                     else
@@ -250,11 +250,9 @@
                 {
                     var att = market.GetMarketCustomAttribute();
 
-                    var regular = GetRegularValue(table, market.GetDescription()) / (decimal)att.Convert;
-                    var proporcional = (decimal)att.Proporcion;
-                    Price += regular * proporcional;
-                    MinPrice += GetMinValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
-                    MaxPrice += GetMaxValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
+                    Price += GetRegularValue(table, market.GetDescription()) / (decimal)att.Convert * (decimal)att.Proportion;
+                    MinPrice += GetMinValue(table, market.GetDescription()) / (decimal)att.Convert * (decimal)att.Proportion;
+                    MaxPrice += GetMaxValue(table, market.GetDescription()) / (decimal)att.Convert * (decimal)att.Proportion;
                 }
 
                 expenses.Add(new Expense() { Type = item, Price = Price, MinPrice = MinPrice, MaxPrice = MaxPrice });
@@ -284,69 +282,71 @@
         await localStorage.SetItemAsync("CountryModel", CountryModel);
     }
 
-    public async Task SyncCity()
-    {
-        //https://www.w3.org/TR/2017/REC-xpath-31-20170321/
+    // public async Task SyncCity()
+    // {
+    //     //https://www.w3.org/TR/2017/REC-xpath-31-20170321/
 
-        var doc = new HtmlDocument();
-        var html = await GetHtml(url);
+    //     var doc = new HtmlDocument();
+    //     var html = await GetHtml(url);
 
-        doc.LoadHtml(html);
+    //     doc.LoadHtml(html);
 
-        var countryName = doc.DocumentNode.SelectNodes("//nav[@class='breadcrumb']//span[position()=3]/a/span").Single().InnerText;
-        var cityName = doc.DocumentNode.SelectNodes("//nav[@class='breadcrumb']//span[position()=5]/a/span").Single().InnerText;
-        //var currency = doc.DocumentNode.SelectNodes("//select[starts-with(@id,'displayCurrency')]/option[@selected='selected']").Single().InnerText;
+    //     var countryName = doc.DocumentNode.SelectNodes("//nav[@class='breadcrumb']//span[position()=3]/a/span").Single().InnerText;
+    //     var cityName = doc.DocumentNode.SelectNodes("//nav[@class='breadcrumb']//span[position()=5]/a/span").Single().InnerText;
+    //     //var currency = doc.DocumentNode.SelectNodes("//select[starts-with(@id,'displayCurrency')]/option[@selected='selected']").Single().InnerText;
 
-        CountryModel.Countries.Add(new Country { Name = countryName });
+    //     CountryModel.Countries.Add(new Country { Name = countryName });
 
-        var table = doc.DocumentNode.SelectNodes("//table[starts-with(@class,'data_wide_table')]").Single();
+    //     var table = doc.DocumentNode.SelectNodes("//table[starts-with(@class,'data_wide_table')]").Single();
 
-        var country = CountryModel.Countries.First(f => f.Name == countryName);
+    //     var country = CountryModel.Countries.First(f => f.Name == countryName);
 
-        var city = country.Cities.FirstOrDefault(f => f.Name == cityName);
+    //     var city = country.Cities.FirstOrDefault(f => f.Name == cityName);
 
-        var expenses = new HashSet<Expense>();
+    //     var expenses = new HashSet<Expense>();
 
-        foreach (var item in EnumHelper.GetArray<ExpenseType>())
-        {
-            if (item == ExpenseType.Market)
-            {
-                decimal Price = 0;
-                decimal MinPrice = 0;
-                decimal MaxPrice = 0;
+    //     foreach (var item in EnumHelper.GetArray<ExpenseType>())
+    //     {
+    //         if (item == ExpenseType.Market)
+    //         {
+    //             double Price = 0;
+    //             double MinPrice = 0;
+    //             double MaxPrice = 0;
 
-                foreach (var market in EnumHelper.GetArray<MarketExpenseType>())
-                {
-                    Price += GetRegularValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
-                    MinPrice += GetMinValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
-                    MaxPrice += GetMaxValue(table, market.GetDescription()) * (decimal)market.GetMarketCustomAttribute().Proporcion;
-                }
+    //             foreach (var market in EnumHelper.GetArray<MarketExpenseType>())
+    //             {
+    //                 var att = market.GetMarketCustomAttribute();
 
-                expenses.Add(new Expense() { Type = item, Price = Price, MinPrice = MinPrice, MaxPrice = MaxPrice });
-            }
-            else
-            {
-                expenses.Add(new Expense() { Type = item, Price = GetRegularValue(table, item.GetDescription()), MinPrice = GetMinValue(table, item.GetDescription()), MaxPrice = GetMaxValue(table, item.GetDescription()) });
-            }
-        }
+    //                 Price += GetRegularValue(table, market.GetDescription()) / att.Convert * att.Proportion;
+    //                 MinPrice += GetMinValue(table, market.GetDescription()) / att.Convert * att.Proportion;
+    //                 MaxPrice += GetMaxValue(table, market.GetDescription()) / att.Convert * att.Proportion;
+    //             }
 
-        //expenses.Add(new Expense() { Type = ExpenseType.RentCentre, Price = GetRegularValue(table, ExpenseType.RentCentre), MinPrice = GetMinValue(table, ExpenseType.RentCentre), MaxPrice = GetMaxValue(table, ExpenseType.RentCentre) });
-        //expenses.Add(new Expense() { Type = ExpenseType.Meal, Price = GetRegularValue(table, ExpenseType.Meal), MinPrice = GetMinValue(table, ExpenseType.Meal), MaxPrice = GetMaxValue(table, ExpenseType.Meal) });
-        //expenses.Add(new Expense() { Type = ExpenseType.Basic, Price = GetRegularValue(table, ExpenseType.Basic), MinPrice = GetMinValue(table, ExpenseType.Basic), MaxPrice = GetMaxValue(table, ExpenseType.Basic) });
-        //expenses.Add(new Expense() { Type = ExpenseType.Internet, Price = GetRegularValue(table, ExpenseType.Internet), MinPrice = GetMinValue(table, ExpenseType.Internet), MaxPrice = GetMaxValue(table, ExpenseType.Internet) });
+    //             expenses.Add(new Expense() { Type = item, Price = (decimal)Price, MinPrice = (decimal)MinPrice, MaxPrice = (decimal)MaxPrice });
+    //         }
+    //         else
+    //         {
+    //             expenses.Add(new Expense() { Type = item, Price = GetRegularValue(table, item.GetDescription()), MinPrice = GetMinValue(table, item.GetDescription()), MaxPrice = GetMaxValue(table, item.GetDescription()) });
+    //         }
+    //     }
 
-        city = new City()
-            {
-                Name = cityName,
-                Link = new Uri(url),
-                Expenses = expenses,
-                UpdatedDate = DateTimeOffset.UtcNow
-            };
+    //     //expenses.Add(new Expense() { Type = ExpenseType.RentCentre, Price = GetRegularValue(table, ExpenseType.RentCentre), MinPrice = GetMinValue(table, ExpenseType.RentCentre), MaxPrice = GetMaxValue(table, ExpenseType.RentCentre) });
+    //     //expenses.Add(new Expense() { Type = ExpenseType.Meal, Price = GetRegularValue(table, ExpenseType.Meal), MinPrice = GetMinValue(table, ExpenseType.Meal), MaxPrice = GetMaxValue(table, ExpenseType.Meal) });
+    //     //expenses.Add(new Expense() { Type = ExpenseType.Basic, Price = GetRegularValue(table, ExpenseType.Basic), MinPrice = GetMinValue(table, ExpenseType.Basic), MaxPrice = GetMaxValue(table, ExpenseType.Basic) });
+    //     //expenses.Add(new Expense() { Type = ExpenseType.Internet, Price = GetRegularValue(table, ExpenseType.Internet), MinPrice = GetMinValue(table, ExpenseType.Internet), MaxPrice = GetMaxValue(table, ExpenseType.Internet) });
 
-        country.Cities.Add(city);
+    //     city = new City()
+    //     {
+    //         Name = cityName,
+    //         Link = new Uri(url),
+    //         Expenses = expenses,
+    //         UpdatedDate = DateTimeOffset.UtcNow
+    //     };
 
-        await localStorage.SetItemAsync("CountryModel", CountryModel);
-    }
+    //     country.Cities.Add(city);
+
+    //     await localStorage.SetItemAsync("CountryModel", CountryModel);
+    // }
 
     // public async Task SyncMinimalWages()
     // {

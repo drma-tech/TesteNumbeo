@@ -18,7 +18,7 @@ namespace TesteNumbeo.Core
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
     public class MarketCustomAttribute : CustomAttribute
     {
-        public double Proporcion { get; set; } = 1;
+        public double Proportion { get; set; } = 1;
         public double Convert { get; set; } = 1;
     }
 

@@ -32,7 +32,10 @@ namespace TesteNumbeo.Model
 
         public HashSet<City> Cities { get; set; } = new();
 
-        public decimal Total(PriceType type, HashSet<CurrencyValue> currencies) => Expenses.Where(w => w.Type == ExpenseType.RentCentre | w.Type == ExpenseType.Meal | w.Type == ExpenseType.Market).Sum(s => s.GetDolar(type, currencies, Currency, s.Type == ExpenseType.Meal || s.Type == ExpenseType.Market ? 30 : 1));
+        public decimal Total(PriceType type, HashSet<CurrencyValue> currencies) =>
+            Expenses
+                .Where(w => w.Type == ExpenseType.RentCentre || w.Type == ExpenseType.Meal || w.Type == ExpenseType.Market)
+                .Sum(s => s.GetDolar(type, currencies, Currency, (s.Type == ExpenseType.Meal || s.Type == ExpenseType.Market) ? 31 : 1));
 
         public override bool Equals(object? obj)
         {
@@ -59,7 +62,8 @@ namespace TesteNumbeo.Model
 
         public HashSet<Expense> Expenses { get; set; } = new();
 
-        public decimal Total(PriceType type, HashSet<CurrencyValue> currencies, string Currency) => Expenses.Sum(s => s.GetDolar(type, currencies, Currency, s.Type == ExpenseType.Meal ? 30 : 1));
+        public decimal Total(PriceType type, HashSet<CurrencyValue> currencies, string Currency) =>
+            Expenses.Sum(s => s.GetDolar(type, currencies, Currency, (s.Type == ExpenseType.Meal || s.Type == ExpenseType.Market) ? 31 : 1));
 
         public override bool Equals(object? obj)
         {
@@ -143,46 +147,46 @@ namespace TesteNumbeo.Model
 
     public enum MarketExpenseType
     {
-        [MarketCustom(Name = "Milk", Description = "Milk (regular), (1 gallon)", Proporcion = 0.25, Convert = Convertions.Gallon)]
+        [MarketCustom(Name = "Milk", Description = "Milk (regular), (1 gallon)", Proportion = 0.25, Convert = Convertions.Gallon)]
         Milk = 0,
 
-        [MarketCustom(Name = "White Bread", Description = "Loaf of Fresh White Bread (1 lb)", Proporcion = 0.25, Convert = Convertions.Pound * 2)]
+        [MarketCustom(Name = "White Bread", Description = "Loaf of Fresh White Bread (1 lb)", Proportion = 0.125, Convert = Convertions.Pound)]
         WhiteBread = 1,
 
-        [MarketCustom(Name = "Rice", Description = "Rice (white), (1 lb)", Proporcion = 0.1, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Rice", Description = "Rice (white), (1 lb)", Proportion = 0.1, Convert = Convertions.Pound)]
         Rice = 2,
 
-        [MarketCustom(Name = "Eggs", Description = "Eggs (regular) (12)", Proporcion = 0.2)]
+        [MarketCustom(Name = "Eggs", Description = "Eggs (regular) (12)", Proportion = 0.2)]
         Eggs = 3,
 
-        [MarketCustom(Name = "Cheese", Description = "Local Cheese (1 lb)", Proporcion = 0.1, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Cheese", Description = "Local Cheese (1 lb)", Proportion = 0.1, Convert = Convertions.Pound)]
         Cheese = 4,
 
-        [MarketCustom(Name = "Chicken", Description = "Chicken Fillets (1 lb)", Proporcion = 0.15, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Chicken", Description = "Chicken Fillets (1 lb)", Proportion = 0.15, Convert = Convertions.Pound)]
         Chicken = 5,
 
-        [MarketCustom(Name = "Beef", Description = "Beef Round (1 lb) (or Equivalent Back Leg Red Meat)", Proporcion = 0.15, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Beef", Description = "Beef Round (1 lb) (or Equivalent Back Leg Red Meat)", Proportion = 0.15, Convert = Convertions.Pound)]
         Beef = 6,
 
-        [MarketCustom(Name = "Apples", Description = "Apples (1 lb)", Proporcion = 0.3, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Apples", Description = "Apples (1 lb)", Proportion = 0.3, Convert = Convertions.Pound)]
         Apples = 7,
 
-        [MarketCustom(Name = "Banana", Description = "Banana (1 lb)", Proporcion = 0.25, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Banana", Description = "Banana (1 lb)", Proportion = 0.25, Convert = Convertions.Pound)]
         Banana = 8,
 
-        [MarketCustom(Name = "Oranges", Description = "Oranges (1 lb)", Proporcion = 0.3, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Oranges", Description = "Oranges (1 lb)", Proportion = 0.3, Convert = Convertions.Pound)]
         Oranges = 9,
 
-        [MarketCustom(Name = "Tomato", Description = "Tomato (1 lb)", Proporcion = 0.2, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Tomato", Description = "Tomato (1 lb)", Proportion = 0.2, Convert = Convertions.Pound)]
         Tomato = 10,
 
-        [MarketCustom(Name = "Potato", Description = "Potato (1 lb)", Proporcion = 0.2, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Potato", Description = "Potato (1 lb)", Proportion = 0.2, Convert = Convertions.Pound)]
         Potato = 11,
 
-        [MarketCustom(Name = "Onion", Description = "Onion (1 lb)", Proporcion = 0.1, Convert = Convertions.Pound)]
+        [MarketCustom(Name = "Onion", Description = "Onion (1 lb)", Proportion = 0.1, Convert = Convertions.Pound)]
         Onion = 12,
 
-        [MarketCustom(Name = "Lettuce", Description = "Lettuce (1 head)", Proporcion = 0.2)]
+        [MarketCustom(Name = "Lettuce", Description = "Lettuce (1 head)", Proportion = 0.2)]
         Lettuce = 13,
     }
 }

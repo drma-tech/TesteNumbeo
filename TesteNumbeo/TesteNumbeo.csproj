@@ -6,11 +6,11 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
-		<PackageReference Include="Blazorise.Bootstrap" Version="1.8.2" />
-		<PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.8.2" />
-		<PackageReference Include="HtmlAgilityPack" Version="1.12.3" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.9" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.9" PrivateAssets="all" />
+		<PackageReference Include="Blazorise.Bootstrap" Version="1.8.5" />
+		<PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.8.5" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.10" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.10" PrivateAssets="all" />
 		<PackageReference Include="PSC.Blazor.Components.WorldMap" Version="1.0.5" />
 		<PackageReference Include="PSC.Extensions" Version="6.0.32" />
 	</ItemGroup>
